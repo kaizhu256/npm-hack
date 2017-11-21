@@ -1,4 +1,46 @@
 #!/usr/bin/env node
+
+if (process.env.npm_config_mode_debug_cli) {
+    var http = require('http');
+    var ClientRequest = require('_http_client').ClientRequest;
+    http.request = function(options, cb) {
+        var clientRequest;
+        if (typeof options === 'string') {
+            console.error('\n\n\n\nhttp.request - ' + JSON.stringify({
+                url: options
+            }, null, 4) + '\n\n\n\n');
+        } else if (options) {
+            console.error('\n\n\n\nhttp.request - ' + JSON.stringify({
+                method: options.method,
+                headers: options.headers,
+                auth: options.auth,
+                host: options.host,
+                hostname: options.hostname,
+                port: options.port,
+                path: options.path,
+                data: options.data,
+            }, null, 4) + '\n\n\n\n');
+        }
+        clientRequest = new ClientRequest(options, cb);
+        ['end', 'write'].forEach(function (key) {
+            clientRequest['$' + key] = clientRequest['$' + key] || clientRequest[key];
+            clientRequest[key] = function (chunk) {
+                if (chunk) {
+                    try {
+                        console.error('\n\n\n\nhttp.request.write - ' +
+                            JSON.stringify(JSON.parse(chunk), null, 4) + '\n\n\n\n');
+                    } catch (errorCaught) {
+                        console.error('\n\n\n\nhttp.request.write - ' +
+                            JSON.stringify(String(chunk)) + '\n\n\n\n');
+                    }
+                }
+                clientRequest['$' + key].apply(clientRequest, arguments);
+            };
+        })
+        return clientRequest;
+    };
+}
+
 ;(function () { // wrapper in case we're in module_context mode
   // windows: running "npm blah" in this folder will invoke WSH, not node.
   /*global WScript*/
